@@ -46,9 +46,9 @@
       <div style="display: flex; align-items: center; gap: 12px;">
         <div id="user-badge" class="hidden" style="font-size: 12px; color: #34d399; background: rgba(5,150,105,0.2); padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(5,150,105,0.4);">
           <span id="user-email-display"></span>
-          <button id="logout-btn" style="background:none; border:none; color:#f43f5e; cursor:pointer; margin-left:8px;"><i class="fa-solid fa-right-from-bracket"></i></button>
+          <button id="logout-btn" onclick="handleLogout()" style="background:none; border:none; color:#f43f5e; cursor:pointer; margin-left:8px;"><i class="fa-solid fa-right-from-bracket"></i></button>
         </div>
-        <button id="open-config-btn" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">Supabase</button>
+        <button id="open-config-btn" onclick="openConfig()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">Supabase</button>
       </div>
     </div>
   </header>
@@ -61,12 +61,12 @@
       
       <div>
         <label>Email</label>
-        <input type="email" id="auth-email" placeholder="manager@company.com" />
+        <input type="email" id="auth-email" placeholder="manager@company.com" value="shteymaksim@gmail.com" />
         <label>Пароль</label>
         <input type="password" id="auth-password" placeholder="••••••••" />
         <div style="display: flex; gap: 10px;">
-          <button type="button" id="login-btn" class="btn" style="flex:1;">Увійти</button>
-          <button type="button" id="register-btn" class="btn btn-secondary" style="flex:1;">Реєстрація</button>
+          <button type="button" onclick="handleLogin()" class="btn" style="flex:1;">Увійти</button>
+          <button type="button" onclick="handleRegister()" class="btn btn-secondary" style="flex:1;">Реєстрація</button>
         </div>
       </div>
       <div id="auth-msg" style="margin-top: 16px; font-size: 12px; text-align: center; color: #38bdf8;">Система готова</div>
@@ -75,25 +75,25 @@
     <!-- WORKSPACE -->
     <div id="workspace" class="hidden">
       <div style="display: flex; gap: 10px; margin-bottom: 24px;">
-        <button id="tab-new-btn" class="btn" style="width: auto;">Новий аналіз</button>
-        <button id="tab-history-btn" class="btn btn-secondary" style="width: auto;">Історія звітів</button>
+        <button onclick="switchTab('new')" id="tab-new-btn" class="btn" style="width: auto;">Новий аналіз</button>
+        <button onclick="switchTab('history')" id="tab-history-btn" class="btn btn-secondary" style="width: auto;">Історія звітів</button>
       </div>
 
       <!-- VIEW NEW -->
       <div id="view-new" class="space-y-6">
         <div class="card" style="margin-bottom: 24px;">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center;">
-            <div id="drop-zone" style="border: 2px dashed #6366f1; border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; background: rgba(15, 23, 42, 0.4);">
-              <input type="file" id="file-input" accept="image/*" class="hidden" />
+            <div id="drop-zone" onclick="document.getElementById('file-input').click()" style="border: 2px dashed #6366f1; border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; background: rgba(15, 23, 42, 0.4);">
+              <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFileSelect(event)" />
               <i class="fa-solid fa-paste" style="font-size: 24px; color: #6366f1; margin-bottom: 8px;"></i>
-              <p style="font-size: 14px; font-weight: 600;">Натисніть Ctrl + V або виберіть файл</p>
+              <p style="font-size: 14px; font-weight: 600;">Натисніть або виберіть файл</p>
               <p style="font-size: 11px; color: #94a3b8; margin-top: 4px;">Скриншот таблиці продажів</p>
             </div>
             <div>
               <label>Google Gemini API Key</label>
               <input type="password" id="gemini-key" placeholder="AIzaSy..." />
               <div style="display: flex; gap: 10px;">
-                <button id="demo-btn" class="btn btn-secondary" style="width:100%;">Демо-дані</button>
+                <button onclick="loadDemo()" class="btn btn-secondary" style="width:100%;">Демо-дані</button>
               </div>
             </div>
           </div>
@@ -108,7 +108,7 @@
         <div id="result-container" class="card hidden">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #1e293b; padding-bottom: 12px;">
             <h3 style="font-size: 16px; font-weight: 700;">Зведена таблиця результатів</h3>
-            <button id="download-png-btn" class="btn btn-secondary" style="width: auto; font-size: 12px;">Зберегти PNG</button>
+            <button onclick="downloadPNG()" class="btn btn-secondary" style="width: auto; font-size: 12px;">Зберегти PNG</button>
           </div>
           <div id="export-target" style="background: #0f172a; padding: 12px; border-radius: 8px;">
             <div style="overflow-x: auto;">
@@ -123,7 +123,7 @@
             </div>
           </div>
           <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
-            <button id="save-db-btn" class="btn" style="background: #059669; width: auto;">Зберегти в базу даних</button>
+            <button onclick="saveToDatabase()" class="btn" style="background: #059669; width: auto;">Зберегти в базу даних</button>
           </div>
         </div>
       </div>
@@ -141,15 +141,19 @@
     <div class="card" style="max-width: 400px; width: 100%;">
       <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
         <h3 style="font-weight: 700;">Налаштування Supabase</h3>
-        <button id="close-config-btn" style="background: none; border: none; color: white; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+        <button onclick="closeConfig()" style="background: none; border: none; color: white; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <label>Project URL</label>
       <input type="text" id="cfg-url" placeholder="https://xyz.supabase.co" />
       <label>Anon API Key</label>
       <input type="password" id="cfg-key" placeholder="ey..." />
-      <button id="save-config-btn" class="btn">Зберегти</button>
+      <button onclick="saveConfig()" class="btn">Зберегти</button>
     </div>
   </div>
 
   <footer>
-    <p>Sales Pulse AI Platform
+    <p>Sales Pulse AI Platform &copy; 2026. Усі права захищено.</p>
+  </footer>
+
+  <script>
+    let supabase
