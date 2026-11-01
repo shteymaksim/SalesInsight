@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f4f7fb">
   <title>SalesInsight — аналітика продажів</title>
 
-  <!-- Public browser libraries. Never place a Supabase service_role key in this file.[cite: 7] -->
+  <!-- Public browser libraries. Never place a Supabase service_role key in this file. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
@@ -81,4 +81,32 @@
     input:focus { border-color: #8eafca; box-shadow: 0 0 0 3px rgba(82,125,168,.12); }
     .btn {
       border: 0; border-radius: 10px; padding: 11px 16px; color: #fff; font-size: 13px;
-      font-weight: 750; background: var(--blue); transition: .18s; min-height:
+      font-weight: 750; background: var(--blue); transition: .18s; min-height: 40px;
+    }
+    .btn:hover { background: var(--blue-dark); transform: translateY(-1px); }
+    .btn:disabled { opacity: .55; cursor: wait; transform: none; }
+    .btn-soft { color: #53677f; background: #eef3f8; border: 1px solid #e1e9f1; }
+    .btn-soft:hover { color: #3d5875; background: #e4edf5; }
+    .btn-green { background: var(--green); }
+    .btn-green:hover { background: #2f725c; }
+    .btn-danger { background: var(--red-soft); color: var(--red); border: 1px solid #f0dada; }
+    .btn-danger:hover { background: #f5e2e2; color: #a84e4e; }
+    .btn-block { width: 100%; }
+    .auth-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+    .message { min-height: 22px; margin-top: 14px; font-size: 12px; line-height: 1.5; color: var(--blue); }
+    .message.error { color: var(--red); }
+    .message.success { color: var(--green); }
+    .tabs { display: flex; gap: 9px; margin-bottom: 22px; }
+    .tab { background: transparent; color: #6e7e93; border: 1px solid transparent; }
+    .tab.active { color: var(--blue-dark); background: var(--blue-soft); border-color: #dce8f2; }
+    .page-title { margin: 0 0 5px; font-size: 25px; letter-spacing: -.7px; }
+    .page-lead { margin: 0 0 22px; color: var(--muted); font-size: 13px; }
+    .upload-layout { display: grid; grid-template-columns: minmax(0,1.35fr) minmax(260px,.8fr); gap: 18px; }
+    .drop-zone {
+      min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 28px; border: 2px dashed #c7d8e7; border-radius: 15px;
+      background: #f8fbfe; transition: .2s; cursor: pointer;
+    }
+    .drop-zone.drag { background: #edf5fb; border-color: var(--blue); }
+    .upload-icon {
+      width: 52px; height: 52px; border-radius
