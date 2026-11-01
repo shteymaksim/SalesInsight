@@ -46,9 +46,9 @@
       <div style="display: flex; align-items: center; gap: 12px;">
         <div id="user-badge" class="hidden" style="font-size: 12px; color: #34d399; background: rgba(5,150,105,0.2); padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(5,150,105,0.4);">
           <span id="user-email-display"></span>
-          <button id="logout-btn" type="button" onclick="handleLogout()" style="background:none; border:none; color:#f43f5e; cursor:pointer; margin-left:8px;"><i class="fa-solid fa-right-from-bracket"></i></button>
+          <button type="button" onclick="handleLogout()" style="background:none; border:none; color:#f43f5e; cursor:pointer; margin-left:8px;"><i class="fa-solid fa-right-from-bracket"></i></button>
         </div>
-        <button id="open-config-btn" type="button" onclick="openConfig()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">Supabase</button>
+        <button type="button" onclick="openConfig()" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">Supabase</button>
       </div>
     </div>
   </header>
@@ -65,8 +65,11 @@
         <label>Пароль</label>
         <input type="password" id="auth-password" placeholder="••••••••" />
         <div style="display: flex; gap: 10px;">
-          <button id="login-btn" type="button" onclick="executeLogin()" class="btn" style="flex:1;">Увійти</button>
-          <button id="register-btn" type="button" onclick="executeRegister()" class="btn btn-secondary" style="flex:1;">Реєстрація</button>
+          <button id="login-btn" type="button"
+          onclick="executeLogin()" class="btn" style="flex:1;">
+          Увійти
+          </button>
+          <button type="button" onclick="executeRegister()" class="btn btn-secondary" style="flex:1;">Реєстрація</button>
         </div>
       </div>
       <div id="auth-msg" style="margin-top: 16px; font-size: 13px; font-weight: 600; text-align: center; color: #38bdf8; min-height: 20px;"></div>
@@ -83,4 +86,8 @@
       <div id="view-new" class="space-y-6">
         <div class="card" style="margin-bottom: 24px;">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center;">
-            <div id="drop-zone" onclick="document.getElementById('file-input').click()" style="border: 2
+            <div id="drop-zone" onclick="document.getElementById('file-input').click()" style="border: 2px dashed #6366f1; border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; background: rgba(15, 23, 42, 0.4);">
+              <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFileSelect(event)" />
+              <i class="fa-solid fa-paste" style="font-size: 24px; color: #6366f1; margin-bottom: 8px;"></i>
+              <p style="font-size: 14px; font-weight: 600;">Натисніть Ctrl + V або виберіть файл</p>
+              <p style="font-
