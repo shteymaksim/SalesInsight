@@ -162,6 +162,7 @@
 
     const DEFAULT_URL = 'https://homfrafjhkevfoyjyhnn.supabase.co';
     const DEFAULT_KEY = 'sb_publishable_SBqyM8eqTLCI3h9v3PFuig_pfQE3vdP';
+    const DEFAULT_GEMINI = 'AIzaSyA...'; // Запасной дефолтный ключ или ключ пользователя
 
     function getSupabase() {
       if (supabaseClient) return supabaseClient;
@@ -185,7 +186,7 @@
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('cfg-url').value = localStorage.getItem('sp_url') || DEFAULT_URL;
       document.getElementById('cfg-key').value = localStorage.getItem('sp_key') || DEFAULT_KEY;
-      document.getElementById('gemini-key').value = localStorage.getItem('sp_gemini') || '';
+      document.getElementById('gemini-key').value = localStorage.getItem('sp_gemini') || DEFAULT_GEMINI;
 
       const loginBtn = document.getElementById('login-btn');
       if (loginBtn) loginBtn.onclick = executeLogin;
@@ -323,16 +324,10 @@
     }
 
     async function processGemini(base64) {
-      const key = document.getElementById('gemini-key').value.trim();
+      const key = document.getElementById('gemini-key').value.trim() || DEFAULT_GEMINI;
       localStorage.setItem('sp_gemini', key);
       const spinner = document.getElementById('loading-spinner');
       spinner.classList.remove('hidden');
-
-      if (!key) {
-        alert('Введіть Gemini API Key!');
-        spinner.classList.add('hidden');
-        return;
-      }
 
       try {
         const clean = base64.split(',')[1];
@@ -341,15 +336,25 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [
-              { text: 'Проаналізуй таблицю продажів на скриншоті. Поверни суворо JSON: {"headers": [...], "rows": [[...]], "summary": [...]}. Без додаткового форматування текста markdown.' },
+              { text: 'Проаналізуй таблицю продажів на скриншоті. Поверни суворо у форматі JSON без жодних додаткових символів та markdown: {"headers": ["..."], "rows": [["..."]], "summary": ["..."]}' },
               { inline_data: { mime_type: "image/png", data: clean } }
             ]}]
           })
         });
         const data = await res.json();
+        
+        // Безопасная проверка ответа с защитой от ошибок
+        if (!data || !data.candidates || data.candidates.length === 0) {
+          throw new Error(data.error?.message || 'Помилка відповіді від Gemini API (порожній кандидат)');
+        }
+
         const text = data.candidates[0].content.parts[0].text;
         const match = text.match(/\{[\s\S]*\}/);
-        if (match) renderResults(JSON.parse(match[0]));
+        if (match) {
+          renderResults(JSON.parse(match[0]));
+        } else {
+          throw new Error('Не вдалося розібрати JSON відповідь від AI');
+        }
       } catch (err) {
         alert('Помилка обробки: ' + err.message);
       } finally {
