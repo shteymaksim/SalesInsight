@@ -86,7 +86,7 @@
             <div id="drop-zone" onclick="document.getElementById('file-input').click()" style="border: 2px dashed #6366f1; border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; background: rgba(15, 23, 42, 0.4);">
               <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFileSelect(event)" />
               <i class="fa-solid fa-paste" style="font-size: 24px; color: #6366f1; margin-bottom: 8px;"></i>
-              <p style="font-size: 14px; font-weight: 600;">Натисніть або виберіть файл</p>
+              <p style="font-size: 14px; font-weight: 600;">Натисніть Ctrl + V або виберіть файл</p>
               <p style="font-size: 11px; color: #94a3b8; margin-top: 4px;">Скриншот таблиці продажів</p>
             </div>
             <div>
@@ -187,23 +187,33 @@
       document.getElementById('cfg-key').value = localStorage.getItem('sp_key') || DEFAULT_KEY;
       document.getElementById('gemini-key').value = localStorage.getItem('sp_gemini') || '';
 
-      // Назначаем обработчики прямым присвоением элементов
       const loginBtn = document.getElementById('login-btn');
-      if (loginBtn) {
-        loginBtn.onclick = executeLogin;
-      }
+      if (loginBtn) loginBtn.onclick = executeLogin;
 
       const regBtn = document.getElementById('register-btn');
-      if (regBtn) {
-        regBtn.onclick = executeRegister;
-      }
+      if (regBtn) regBtn.onclick = executeRegister;
+
+      // Глобальный перехват вставки из буфера обмена (Ctrl + V)
+      window.addEventListener('paste', (e) => {
+        const items = (e.clipboardData || window.clipboardData)?.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            const file = items[i].getAsFile();
+            if (file) {
+              e.preventDefault();
+              handleFile(file);
+              break;
+            }
+          }
+        }
+      });
 
       showMsg('Система готова');
     });
 
     async function executeLogin() {
       showMsg('Обробка входу...', '#38bdf8');
-      
       const email = document.getElementById('auth-email').value.trim();
       const pass = document.getElementById('auth-password').value.trim();
 
@@ -236,7 +246,6 @@
 
     async function executeRegister() {
       showMsg('Обробка реєстрації...', '#38bdf8');
-
       const email = document.getElementById('auth-email').value.trim();
       const pass = document.getElementById('auth-password').value.trim();
 
@@ -307,17 +316,6 @@
       if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
     }
 
-    window.onpaste = (e) => {
-      const items = e.clipboardData && e.clipboardData.items;
-      if (!items) return;
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf('image') !== -1) {
-          handleFile(items[i].getAsFile());
-          break;
-        }
-      }
-    };
-
     function handleFile(file) {
       const reader = new FileReader();
       reader.onload = (e) => processGemini(e.target.result);
@@ -328,130 +326,3 @@
       const key = document.getElementById('gemini-key').value.trim();
       localStorage.setItem('sp_gemini', key);
       const spinner = document.getElementById('loading-spinner');
-      spinner.classList.remove('hidden');
-
-      if (!key) {
-        alert('Введіть Gemini API Key!');
-        spinner.classList.add('hidden');
-        return;
-      }
-
-      try {
-        const clean = base64.split(',')[1];
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [
-              { text: 'Проаналізуй таблицю продажів на скриншоті. Поверни суворо JSON: {"headers": [...], "rows": [[...]], "summary": [...]}. Без додаткового форматування текста markdown.' },
-              { inline_data: { mime_type: "image/png", data: clean } }
-            ]}]
-          })
-        });
-        const data = await res.json();
-        const text = data.candidates[0].content.parts[0].text;
-        const match = text.match(/\{[\s\S]*\}/);
-        if (match) renderResults(JSON.parse(match[0]));
-      } catch (err) {
-        alert('Помилка обробки: ' + err.message);
-      } finally {
-        spinner.classList.add('hidden');
-      }
-    }
-
-    function renderResults(data) {
-      currentReportData = data;
-      const head = document.getElementById('table-head');
-      const body = document.getElementById('table-body');
-      head.innerHTML = ''; body.innerHTML = '';
-
-      const trh = document.createElement('tr');
-      data.headers.forEach(h => {
-        const th = document.createElement('th');
-        th.textContent = h;
-        trh.appendChild(th);
-      });
-      head.appendChild(trh);
-
-      data.rows.forEach(row => {
-        const tr = document.createElement('tr');
-        row.forEach(cell => {
-          const td = document.createElement('td');
-          td.textContent = cell;
-          tr.appendChild(td);
-        });
-        body.appendChild(tr);
-      });
-
-      document.getElementById('ai-text-summary').textContent = Array.isArray(data.summary) ? data.summary.join('\n') : data.summary;
-      document.getElementById('result-container').classList.remove('hidden');
-    }
-
-    async function saveToDatabase() {
-      const client = getSupabase();
-      if (!client || !currentUser || !currentReportData) return;
-      try {
-        const { error } = await client.from('sales_reports').insert({
-          user_id: currentUser.id,
-          summary_data: currentReportData,
-          ai_analysis: Array.isArray(currentReportData.summary) ? currentReportData.summary.join('\n') : currentReportData.summary
-        });
-        if (error) throw error;
-        alert('Звіт успішно збережено в Supabase!');
-      } catch (err) {
-        alert('Помилка збереження: ' + err.message);
-      }
-    }
-
-    function downloadPNG() {
-      const target = document.getElementById('export-target');
-      if (window.html2canvas && target) {
-        html2canvas(target, { backgroundColor: '#0f172a' }).then(canvas => {
-          const link = document.createElement('a');
-          link.download = `sales-report-${new Date().toISOString().slice(0,10)}.png`;
-          link.href = canvas.toDataURL();
-          link.click();
-        });
-      }
-    }
-
-    async function loadHistory() {
-      const container = document.getElementById('history-list');
-      container.innerHTML = '<p style="color: #94a3b8; font-size: 13px;">Завантаження історії...</p>';
-      const client = getSupabase();
-      if (!client || !currentUser) {
-        container.innerHTML = '<p style="color: #f43f5e; font-size: 13px;">Необхідно авторизуватись.</p>';
-        return;
-      }
-
-      try {
-        const { data, error } = await client
-          .from('sales_reports')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        if (!data || data.length === 0) {
-          container.innerHTML = '<p style="color: #94a3b8; font-size: 13px;">Збережених звітів поки немає.</p>';
-          return;
-        }
-
-        container.innerHTML = '';
-        data.forEach(item => {
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.style.padding = '16px';
-          card.innerHTML = `
-            <p style="font-size: 11px; color: #6366f1; margin-bottom: 6px;">${new Date(item.created_at).toLocaleString()}</p>
-            <p style="font-size: 13px; color: #cbd5e1; white-space: pre-line;">${item.ai_analysis}</p>
-          `;
-          container.appendChild(card);
-        });
-      } catch (err) {
-        container.innerHTML = `<p style="color: #f43f5e; font-size: 13px;">Помилка: ${err.message}</p>`;
-      }
-    }
-  </script>
-</body>
-</html>
