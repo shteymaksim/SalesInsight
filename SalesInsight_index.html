@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7fb">
+  <title>SalesInsight — аналітика продажів</title>
+
+  <!-- Public browser libraries. Never place a Supabase service_role key in this file. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --ink: #263449;
+      --muted: #77859a;
+      --line: #e5ebf2;
+      --blue: #527da8;
+      --blue-dark: #3e668f;
+      --blue-soft: #eaf2f9;
+      --green: #39866d;
+      --green-soft: #e8f4ee;
+      --amber: #b98238;
+      --amber-soft: #fbf2e5;
+      --red: #bd6464;
+      --red-soft: #faeded;
+      --shadow: 0 12px 34px rgba(40, 62, 88, .07);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: flex; flex-direction: column;
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .topbar {
+      position: sticky; top: 0; z-index: 20; background: rgba(255,255,255,.92);
+      border-bottom: 1px solid var(--line); backdrop-filter: blur(14px);
+    }
+    .topbar-inner {
+      max-width: 1240px; margin: auto; padding: 13px 22px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark {
+      width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center;
+      color: #fff; font-size: 20px; font-weight: 800;
+      background: linear-gradient(145deg, #7da7c8, #527da8);
+      box-shadow: 0 7px 16px rgba(82,125,168,.2);
+    }
+    .brand h1 { margin: 0; font-size: 17px; letter-spacing: -.3px; }
+    .brand p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .user-chip {
+      display: flex; align-items: center; gap: 9px; border: 1px solid #dcebe3;
+      color: var(--green); background: var(--green-soft); padding: 7px 10px;
+      border-radius: 999px; font-size: 12px; max-width: 280px;
+    }
+    .user-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    main { width: min(1240px, 100%); margin: 0 auto; padding: 34px 22px 56px; flex: 1; }
+    .card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 24px;
+    }
+    .auth-card { max-width: 440px; margin: 38px auto; padding: 30px; }
+    .eyebrow { color: var(--blue); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h2, h3, p { overflow-wrap: anywhere; }
+    .auth-card h2 { margin: 8px 0 7px; font-size: 24px; letter-spacing: -.7px; }
+    .subtext { color: var(--muted); font-size: 13px; line-height: 1.55; }
+    label { display: block; margin: 15px 0 6px; color: #65748a; font-size: 12px; font-weight: 700; }
+    input[type="email"], input[type="password"], input[type="text"] {
+      width: 100%; padding: 12px 13px; border: 1px solid #dfe6ee; border-radius: 10px;
+      background: #fbfcfe; color: var(--ink); outline: none; transition: .18s;
+    }
+    input:focus { border-color: #8eafca; box-shadow: 0 0 0 3px rgba(82,125,168,.12); }
+    .btn {
+      border: 0; border-radius: 10px; padding: 11px 16px; color: #fff; font-size: 13px;
+      font-weight: 750; background: var(--blue); transition: .18s; min-height: 40px;
+    }
+    .btn:hover { background: var(--blue-dark); transform: translateY(-1px); }
+    .btn:disabled { opacity: .55; cursor: wait; transform: none; }
+    .btn-soft { color: #53677f; background: #eef3f8; border: 1px solid #e1e9f1; }
+    .btn-soft:hover { color: #3d5875; background: #e4edf5; }
+    .btn-green { background: var(--green); }
+    .btn-green:hover { background: #2f725c; }
+    .btn-danger { background: var(--red-soft); color: var(--red); border: 1px solid #f0dada; }
+    .btn-danger:hover { background: #f5e2e2; color: #a84e4e; }
+    .btn-block { width: 100%; }
+    .auth-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+    .message { min-height: 22px; margin-top: 14px; font-size: 12px; line-height: 1.5; color: var(--blue); }
+    .message.error { color: var(--red); }
+    .message.success { color: var(--green); }
+    .tabs { display: flex; gap: 9px; margin-bottom: 22px; }
+    .tab { background: transparent; color: #6e7e93; border: 1px solid transparent; }
+    .tab.active { color: var(--blue-dark); background: var(--blue-soft); border-color: #dce8f2; }
+    .page-title { margin: 0 0 5px; font-size: 25px; letter-spacing: -.7px; }
+    .page-lead { margin: 0 0 22px; color: var(--muted); font-size: 13px; }
+    .upload-layout { display: grid; grid-template-columns: minmax(0,1.35fr) minmax(260px,.8fr); gap: 18px; }
+    .drop-zone {
+      min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 28px; border: 2px dashed #c7d8e7; border-radius: 15px;
+      background: #f8fbfe; transition: .2s; cursor: pointer;
+    }
+    .drop-zone.drag { background: #edf5fb; border-color: var(--blue); }
+    .upload-icon {
+      width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center;
+      background: var(--blue-soft); color: var(--blue); font-size: 23px; margin-bottom: 13px;
+    }
+    .drop-zone strong { font-size: 14px; }
+    .drop-zone small { color: var(--muted); margin-top: 7px; font-size: 12px; line-height: 1.5; }
+    .file-name { margin-top: 10px; color: var(--green); font-size: 12px; font-weight: 700; }
+    .settings-panel { padding: 19px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 14px; }
+    .settings-panel h3 { margin: 0 0 5px; font-size: 14px; }
+    .settings-panel p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .settings-panel input { margin-top: 12px; }
+    .hint { margin-top: 10px !important; }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    .toolbar h2 { margin: 0; font-size: 18px; }
+    .toolbar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .loading {
+      display: flex; align-items: center; gap: 13px; color: var(--blue-dark);
+      background: var(--blue-soft); border: 1px solid #dce8f2; border-radius: 13px;
+      padding: 17px 19px; margin-top: 18px; font-size: 13px; font-weight: 650;
+    }
+    .spinner { width: 18px; height: 18px; border: 2px solid #c6d8e7; border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .result-card { margin-top: 22px; }
+    .export-target { background: #fff; border: 1px solid var(--line); border-radius: 13px; padding: 17px; overflow: hidden; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 520px; }
+    th, td { text-align: left; padding: 12px 13px; border-bottom: 1px solid #e9eef4; font-size: 12px; }
+    th { background: #f2f6fa; color: #63758b; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+    tbody tr:nth-child(even) { background: #fbfcfe; }
+    .summary-box { margin-top: 17px; padding: 17px; border-radius: 12px; background: #f4f8fb; border: 1px solid #e4edf4; }
+    .summary-box h4 { color: var(--blue); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; margin: 0 0 9px; }
+    .summary-text { color: #4e5f74; font-size: 13px; line-height: 1.65; white-space: pre-line; }
+    .save-row { display: flex; justify-content: flex-end; gap: 9px; margin-top: 14px; }
+    .history-list { display: flex; flex-direction: column; gap: 12px; }
+    .history-item { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 17px 19px; }
+    .history-item h3 { margin: 0 0 5px; font-size: 14px; }
+    .history-item p { margin: 0; color: var(--muted); font-size: 11px; }
+    .history-summary { margin-top: 8px !important; color: #596b80 !important; font-size: 12px !important; line-height: 1.5; }
+    .empty { padding: 34px; text-align: center; color: var(--muted); font-size: 13px; }
+    .notice { margin-top: 16px; padding: 12px 14px; border-radius: 10px; background: var(--amber-soft); color: #8b672f; font-size: 11px; line-height: 1.5; }
+    .modal {
+      position: fixed; inset: 0; z-index: 50; background: rgba(34,49,68,.32);
+      display: grid; place-items: center; padding: 18px;
+    }
+    .modal-card { width: min(440px, 100%); background: #fff; border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 24px 70px rgba(30,50,75,.2); padding: 23px; }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .modal-head h3 { margin: 0; font-size: 17px; }
+    .icon-btn { border: 0; background: #f0f4f8; color: #61738a; border-radius: 9px; width: 34px; height: 34px; }
+    .toast {
+      position: fixed; right: 20px; bottom: 20px; z-index: 80; max-width: min(420px, calc(100% - 40px));
+      padding: 13px 16px; border-radius: 12px; background: #31465e; color: #fff; font-size: 12px;
+      box-shadow: 0 12px 30px rgba(20,40,65,.2); line-height: 1.5;
+    }
+    footer { padding: 18px 20px; text-align: center; color: #9aa7b7; font-size: 11px; }
+    .hidden { display: none !important; }
+    @media (max-width: 760px) {
+      main { padding: 23px 14px 40px; }
+      .topbar-inner { padding: 11px 14px; }
+      .upload-layout { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+      .auth-card { margin: 20px auto; }
+      .page-title { font-size: 22px; }
+      .history-item { align-items: flex-start; flex-direction: column; }
+      .user-chip { max-width: 155px; }
+    }
+    @media (max-width: 420px) {
+      .brand p { display: none; }
+      .top-actions { gap: 5px; }
+      .top-actions .btn { padding: 8px 9px; font-size: 11px; }
+      .auth-actions { grid-template-columns: 1fr; }
+      .tabs { display: grid; grid-template-columns: 1fr 1fr; }
+      .tabs .btn { padding: 9px 8px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-mark">S</div>
+        <div>
+          <h1>SalesInsight</h1>
+          <p>Аналітика продажів та конверсії</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div id="user-badge" class="user-chip hidden"><span id="user-email-display"></span><button id="logout-btn" class="icon-btn" type="button" title="Вийти">↗</button></div>
+        <button id="config-open-btn" class="btn btn-soft" type="button">Налаштування</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="auth-container" class="card auth-card">
+      <div class="eyebrow">SalesInsight workspace</div>
+      <h2>Вітаємо!</h2>
+      <p class="subtext">Увійдіть до системи, щоб аналізувати показники та зберігати звіти у своєму профілі.</p>
+      <form id="auth-form">
+        <label for="auth-email">Email</label>
+        <input type="email" id="auth-email" placeholder="name@company.com" autocomplete="username" required>
+        <label for="auth-password">Пароль</label>
+        <input type="password" id="auth-password" placeholder="Введіть пароль" autocomplete="current-password" required>
+        <div class="auth-actions">
+          <button id="login-btn" class="btn" type="submit">Увійти</button>
+          <button id="register-btn" class="btn btn-soft" type="button">Створити акаунт</button>
+        </div>
+      </form>
+      <div id="auth-msg" class="message" role="status" aria-live="polite"></div>
+      <div class="notice">Якщо реєстрація потребує підтвердження email, відкрийте лист від Supabase та підтвердьте адресу перед першим входом.</div>
+    </section>
+
+    <section id="workspace" class="hidden">
+      <div class="tabs">
+        <button id="tab-new-btn" class="btn tab active" type="button">Новий аналіз</button>
+        <button id="tab-history-btn" class="btn tab" type="button">Історія звітів</button>
+      </div>
+
+      <section id="view-new">
+        <h2 class="page-title">Новий аналіз</h2>
+        <p class="page-lead">Завантажте скриншот таблиці або вставте зображення з буфера обміну.</p>
+        <div class="card">
+          <div class="upload-layout">
+            <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Вибрати скриншот для аналізу">
+              <div class="upload-icon">↑</div>
+              <strong>Перетягніть скриншот сюди</strong>
+              <small>Або натисніть, щоб вибрати файл. Також можна вставити зображення через Ctrl + V.</small>
+              <div id="file-name" class="file-name"></div>
+              <input id="file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+            </div>
+            <div class="settings-panel">
+              <h3>Підключення Gemini AI</h3>
+              <p>Вкажіть свій Gemini API key. Ключ зберігається лише у локальному сховищі цього браузера.</p>
+              <label for="gemini-key">Gemini API Key</label>
+              <input type="password" id="gemini-key" placeholder="Вставте API key" autocomplete="off">
+              <button id="demo-btn" type="button" class="btn btn-soft btn-block">Завантажити демо-дані</button>
+              <p class="hint">Підказка: отримати ключ можна в Google AI Studio. Не використовуйте спільний або службовий ключ у відкритому браузерному застосунку.</p>
+            </div>
+          </div>
+          <div id="loading-spinner" class="loading hidden"><span class="spinner"></span><span id="loading-text">Аналізуємо скриншот…</span></div>
+          <div id="analysis-msg" class="message" role="status" aria-live="polite"></div>
+        </div>
+
+        <section id="result-container" class="card result-card hidden">
+          <div class="toolbar">
+            <h2>Результати аналізу</h2>
+            <div class="toolbar-actions">
+              <button id="download-btn" class="btn btn-soft" type="button">Експорт PNG</button>
+              <button id="save-btn" class="btn btn-green" type="button">Зберегти звіт</button>
+            </div>
+          </div>
+          <div id="export-target" class="export-target">
+            <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+              <div><div class="eyebrow">SalesInsight report</div><div id="report-date" style="font-size:11px;color:#8795a7;margin-top:4px"></div></div>
+              <div style="font-size:17px;font-weight:800;color:#527da8">SALES INSIGHT</div>
+            </div>
+            <div class="table-wrap"><table><thead id="table-head"></thead><tbody id="table-body"></tbody></table></div>
+            <div class="summary-box"><h4>Аналітичний висновок AI</h4><div id="ai-text-summary" class="summary-text"></div></div>
+          </div>
+        </section>
+      </section>
+
+      <section id="view-history" class="hidden">
+        <h2 class="page-title">Історія звітів</h2>
+        <p class="page-lead">Збережені аналізи вашого облікового запису.</p>
+        <div id="history-list" class="history-list"><div class="card empty">Звіти ще не завантажені.</div></div>
+      </section>
+    </section>
+  </main>
+
+  <div id="config-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="config-title">
+    <div class="modal-card">
+      <div class="modal-head"><h3 id="config-title">Підключення Supabase</h3><button id="config-close-btn" class="icon-btn" type="button" aria-label="Закрити">×</button></div>
+      <p class="subtext">Використовуйте Project URL та publishable/anon key вашого проєкту. Service role key сюди вводити не можна.</p>
+      <label for="cfg-url">Project URL</label><input type="text" id="cfg-url" placeholder="https://project.supabase.co">
+      <label for="cfg-key">Publishable / anon key</label><input type="password" id="cfg-key" placeholder="sb_publishable_… або anon key">
+      <div class="auth-actions"><button id="config-save-btn" class="btn" type="button">Зберегти й перезапустити</button><button id="config-cancel-btn" class="btn btn-soft" type="button">Скасувати</button></div>
+      <div id="config-msg" class="message" role="status"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <footer>SalesInsight Platform · 2026</footer>
+
+  <script>
+  (() => {
+    'use strict';
+
+    const DEFAULT_URL = 'https://homfrafjhkevfoyjyhnn.supabase.co';
+    const DEFAULT_KEY = 'sb_publishable_SBqyM8eqTLCI3h9v3PFuig_pfQE3vdP';
+    const GEMINI_MODEL = 'gemini-3.8-flash';
+
+    let supabaseClient = null;
+    let currentUser = null;
+    let currentReportData = null;
+    let selectedImage = null;
+    let toastTimer = null;
+
+    const $ = (id) => document.getElementById(id);
+    const show = (el) => el && el.classList.remove('hidden');
+    const hide = (el) => el && el.classList.add('hidden');
+
+    function setMessage(id, message, type = '') {
+      const el = $(id);
+      if (!el) return;
+      el.textContent = message || '';
+      el.className = 'message' + (type ? ' ' + type : '');
+    }
+
+    function notify(message, type = 'info') {
+      const el = $('toast');
+      el.textContent = message;
+      el.style.background = type === 'error' ? '#9d5555' : type === 'success' ? '#397b65' : '#31465e';
+      show(el);
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => hide(el), 4200);
+    }
+
+    function getSupabaseSettings() {
+      return {
+        url: (localStorage.getItem('sp_url') || DEFAULT_URL).trim().replace(/\/+$/, ''),
+        key: (localStorage.getItem('sp_key') || DEFAULT_KEY).trim()
+      };
+    }
+
+    function initializeSupabase() {
+      const { url, key } = getSupabaseSettings();
+      if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+        throw new Error('Не вдалося завантажити бібліотеку Supabase. Перевірте підключення до CDN.');
+      }
+      if (!url || !key) throw new Error('Не заповнені Supabase Project URL або publishable key.');
+      supabaseClient = window.supabase.createClient(url, key, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+      });
+    }
+
+    function setBusy(button, busy, busyText) {
+      if (!button) return;
+      if (busy) {
+        button.dataset.originalText = button.textContent;
+        button.textContent = busyText || 'Зачекайте…';
+        button.disabled = true;
+      } else {
+        button.textContent = button.dataset.originalText || button.textContent;
+        button.disabled = false;
+      }
+    }
+
+    function updateAuthUI(user) {
+      currentUser = user || null;
+      if (currentUser) {
+        hide($('auth-container'));
+        show($('workspace'));
+        show($('user-badge'));
+        $('user-email-display').textContent = currentUser.email || 'Користувач';
+      } else {
+        show($('auth-container'));
+        hide($('workspace'));
+        hide($('user-badge'));
+        $('user-email-display').textContent = '';
+      }
+    }
+
+    async function restoreSession() {
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error) throw error;
+      updateAuthUI(data.session ? data.session.user : null);
+      if (data.session) {
+        // Load user reports only after the initial session has been restored.
+        await loadHistory();
+      }
+    }
+
+    async function login(event) {
+      event?.preventDefault();
+      const email = $('auth-email').value.trim();
+      const password = $('auth-password').value;
+      if (!email || !password) return setMessage('auth-msg', 'Введіть email та пароль.', 'error');
+      const button = $('login-btn');
+      setBusy(button, true, 'Вхід…');
+      setMessage('auth-msg', 'Перевіряємо облікові дані…');
+      try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        updateAuthUI(data.user);
+        setMessage('auth-msg', '');
+        notify('Вхід успішний.', 'success');
+        await loadHistory();
+      } catch (error) {
+        setMessage('auth-msg', friendlyError(error), 'error');
+      } finally {
+        setBusy(button, false);
+      }
+    }
+
+    async function register() {
+      const email = $('auth-email').value.trim();
+      const password = $('auth-password').value;
+      if (!email || !password) return setMessage('auth-msg', 'Введіть email та пароль.', 'error');
+      if (password.length < 6) return setMessage('auth-msg', 'Пароль має містити щонайменше 6 символів.', 'error');
+      const button = $('register-btn');
+      setBusy(button, true, 'Створюємо…');
+      setMessage('auth-msg', 'Створюємо обліковий запис…');
+      try {
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) throw error;
+        if (data.session) {
+          updateAuthUI(data.user);
+          setMessage('auth-msg', 'Акаунт створено. Ви увійшли.', 'success');
+        } else {
+          setMessage('auth-msg', 'Реєстрація успішна. Перевірте пошту та підтвердьте email, після цього увійдіть.', 'success');
+        }
+      } catch (error) {
+        setMessage('auth-msg', friendlyError(error), 'error');
+      } finally {
+        setBusy(button, false);
+      }
+    }
+
+    async function logout() {
+      try {
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) throw error;
+        currentReportData = null;
+        updateAuthUI(null);
+        hide($('result-container'));
+        notify('Ви вийшли з облікового запису.', 'success');
+      } catch (error) {
+        notify('Не вдалося вийти: ' + friendlyError(error), 'error');
+      }
+    }
+
+    function friendlyError(error) {
+      const message = error?.message || String(error || 'Невідома помилка');
+      if (/Invalid login credentials/i.test(message)) return 'Невірний email або пароль.';
+      if (/Email not confirmed/i.test(message)) return 'Email ще не підтверджено. Перевірте пошту.';
+      if (/Failed to fetch|NetworkError/i.test(message)) return 'Немає з’єднання із сервісом. Перевірте інтернет та налаштування проєкту.';
+      return message;
+    }
+
+    function openConfig() {
+      const settings = getSupabaseSettings();
+      $('cfg-url').value = settings.url;
+      $('cfg-key').value = settings.key;
+      show($('config-modal'));
+    }
+    function closeConfig() { hide($('config-modal')); }
+    function saveConfig() {
+      const url = $('cfg-url').value.trim();
+      const key = $('cfg-key').value.trim();
+      if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)) {
+        return setMessage('config-msg', 'Вкажіть коректний Supabase Project URL.', 'error');
+      }
+      if (!key) return setMessage('config-msg', 'Вкажіть publishable або anon key.', 'error');
+      localStorage.setItem('sp_url', url);
+      localStorage.setItem('sp_key', key);
+      location.reload();
+    }
+
+    function switchTab(tab) {
+      const history = tab === 'history';
+      hide(history ? $('view-new') : $('view-history'));
+      show(history ? $('view-history') : $('view-new'));
+      $('tab-new-btn').classList.toggle('active', !history);
+      $('tab-history-btn').classList.toggle('active', history);
+      if (history) loadHistory();
+    }
+
+    function saveGeminiKey() {
+      localStorage.setItem('sp_gemini', $('gemini-key').value.trim());
+    }
+
+    function selectFile(file) {
+      if (!file) return;
+      if (!file.type.startsWith('image/')) return notify('Оберіть файл зображення.', 'error');
+      if (file.size > 20 * 1024 * 1024) return notify('Файл завеликий. Максимальний розмір — 20 МБ.', 'error');
+      selectedImage = file;
+      $('file-name').textContent = file.name || 'Зображення з буфера обміну';
+      analyzeImage(file);
+    }
+
+    function readAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Не вдалося прочитати файл.'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function prepareImage(file) {
+      const dataUrl = await readAsDataUrl(file);
+      const image = new Image();
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = () => reject(new Error('Файл не вдалося відкрити як зображення.'));
+        image.src = dataUrl;
+      });
+      const maxSide = 2200;
+      const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const jpeg = canvas.toDataURL('image/jpeg', .9);
+      return { mimeType: 'image/jpeg', base64: jpeg.split(',')[1] };
+    }
+
+    async function analyzeImage(file) {
+      const key = $('gemini-key').value.trim();
+      if (!key) {
+        notify('Спочатку введіть Gemini API key.', 'error');
+        return;
+      }
+      saveGeminiKey();
+      show($('loading-spinner'));
+      $('loading-text').textContent = 'Gemini аналізує таблицю. Це може тривати до хвилини…';
+      setMessage('analysis-msg', '');
+      $('file-input').disabled = true;
+      try {
+        const image = await prepareImage(file);
+        const prompt = [
+          'Ти — аналітик роздрібних продажів. Уважно прочитай таблицю на зображенні.',
+          'Витягни дані без вигадування. Збережи всі видимі назви колонок, рядки, імена, числа, відсотки та одиниці виміру.',
+          'Якщо значення нечитабельне, познач його як "Не розпізнано", не вгадуй.',
+          'У summary дай короткий структурований висновок українською: ключові результати, сильні/слабкі місця, а також застереження щодо нечитабельних даних.',
+          'Поверни JSON об’єкт рівно такої структури: {"headers":["назва колонки"],"rows":[["значення"]],"summary":["пункт висновку"]}.',
+          'Не додавай Markdown, коментарі або текст поза JSON.'
+        ].join(' ');
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: prompt }, { inline_data: { mime_type: image.mimeType, data: image.base64 } }] }],
+            generationConfig: { responseMimeType: 'application/json', temperature: 0.2, maxOutputTokens: 8192 }
+          })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error?.message || `Gemini API повернув HTTP ${response.status}.`);
+        const text = payload.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('') || '';
+        if (!text) throw new Error(payload.promptFeedback?.blockReason ? 'Запит заблоковано фільтром Gemini.' : 'Gemini повернув порожню відповідь.');
+        const parsed = parseJsonResponse(text);
+        validateReport(parsed);
+        renderResults(parsed);
+        notify('Аналіз завершено.', 'success');
+      } catch (error) {
+        setMessage('analysis-msg', 'Помилка аналізу: ' + friendlyError(error), 'error');
+        notify('Не вдалося виконати аналіз. Перевірте повідомлення під блоком завантаження.', 'error');
+      } finally {
+        hide($('loading-spinner'));
+        $('file-input').disabled = false;
+      }
+    }
+
+    function parseJsonResponse(text) {
+      const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      try { return JSON.parse(cleaned); } catch (_) {
+        const start = cleaned.indexOf('{');
+        const end = cleaned.lastIndexOf('}');
+        if (start >= 0 && end > start) return JSON.parse(cleaned.slice(start, end + 1));
+        throw new Error('Не вдалося прочитати JSON-відповідь Gemini.');
+      }
+    }
+
+    function validateReport(data) {
+      if (!data || !Array.isArray(data.headers) || !Array.isArray(data.rows)) {
+        throw new Error('Відповідь AI має неправильну структуру: відсутні headers або rows.');
+      }
+      if (data.headers.length === 0) throw new Error('У відповіді AI немає заголовків таблиці.');
+      data.headers = data.headers.map(value => String(value ?? ''));
+      data.rows = data.rows.map(row => Array.isArray(row) ? row.map(value => String(value ?? '')) : []);
+      data.summary = Array.isArray(data.summary) ? data.summary.map(value => String(value ?? '')) : [String(data.summary || '')];
+    }
+
+    function renderResults(data) {
+      validateReport(data);
+      currentReportData = data;
+      const head = $('table-head');
+      const body = $('table-body');
+      head.replaceChildren();
+      body.replaceChildren();
+      const headerRow = document.createElement('tr');
+      data.headers.forEach(value => {
+        const th = document.createElement('th');
+        th.textContent = value;
+        headerRow.appendChild(th);
+      });
+      head.appendChild(headerRow);
+      data.rows.forEach(row => {
+        const tr = document.createElement('tr');
+        data.headers.forEach((_, index) => {
+          const td = document.createElement('td');
+          td.textContent = row[index] ?? '';
+          tr.appendChild(td);
+        });
+        body.appendChild(tr);
+      });
+      $('ai-text-summary').textContent = data.summary.join('\n');
+      $('report-date').textContent = 'Сформовано: ' + new Date().toLocaleString('uk-UA');
+      show($('result-container'));
+      $('result-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    async function saveToDatabase() {
+      if (!currentUser) return notify('Спочатку увійдіть в обліковий запис.', 'error');
+      if (!currentReportData) return notify('Немає звіту для збереження.', 'error');
+      const button = $('save-btn');
+      setBusy(button, true, 'Збереження…');
+      try {
+        const summary = currentReportData.summary.join('\n');
+        const { error } = await supabaseClient.from('sales_reports').insert({
+          user_id: currentUser.id,
+          summary_data: currentReportData,
+          ai_analysis: summary
+        });
+        if (error) throw error;
+        notify('Звіт збережено у вашому профілі.', 'success');
+      } catch (error) {
+        notify('Помилка збереження: ' + friendlyError(error), 'error');
+      } finally {
+        setBusy(button, false);
+      }
+    }
+
+    async function loadHistory() {
+      const container = $('history-list');
+      container.replaceChildren();
+      const loading = document.createElement('div');
+      loading.className = 'card empty';
+      loading.textContent = 'Завантажуємо історію…';
+      container.appendChild(loading);
+      if (!currentUser) {
+        container.replaceChildren();
+        const empty = document.createElement('div');
+        empty.className = 'card empty';
+        empty.textContent = 'Увійдіть, щоб переглянути історію.';
+        container.appendChild(empty);
+        return;
+      }
+      try {
+        const { data, error } = await supabaseClient
+          .from('sales_reports')
+          .select('id, created_at, summary_data, ai_analysis')
+          .eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false })
+          .limit(100);
+        if (error) throw error;
+        container.replaceChildren();
+        if (!data || data.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'card empty';
+          empty.textContent = 'Збережених звітів поки немає. Створіть перший аналіз.';
+          container.appendChild(empty);
+          return;
+        }
+        data.forEach(item => {
+          const card = document.createElement('article');
+          card.className = 'card history-item';
+          const details = document.createElement('div');
+          details.style.flex = '1';
+          const title = document.createElement('h3');
+          title.textContent = 'Звіт від ' + (item.created_at ? new Date(item.created_at).toLocaleString('uk-UA') : 'невідома дата');
+          const date = document.createElement('p');
+          date.textContent = `ID: ${item.id}`;
+          const summary = document.createElement('p');
+          summary.className = 'history-summary';
+          summary.textContent = item.ai_analysis || 'Аналітичний висновок відсутній.';
+          details.append(title, date, summary);
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'btn btn-soft';
+          button.textContent = 'Відкрити звіт';
+          button.addEventListener('click', () => {
+            const report = item.summary_data;
+            if (!report || !Array.isArray(report.headers) || !Array.isArray(report.rows)) {
+              return notify('У збереженому записі відсутня таблиця звіту.', 'error');
+            }
+            renderResults(report);
+            switchTab('new');
+          });
+          card.append(details, button);
+          container.appendChild(card);
+        });
+      } catch (error) {
+        container.replaceChildren();
+        const message = document.createElement('div');
+        message.className = 'card empty';
+        message.style.color = '#bd6464';
+        message.textContent = 'Не вдалося завантажити історію: ' + friendlyError(error) + ' Перевірте таблицю та RLS-політики Supabase.';
+        container.appendChild(message);
+      }
+    }
+
+    async function downloadPNG() {
+      if (!window.html2canvas) return notify('Не вдалося завантажити модуль експорту PNG.', 'error');
+      try {
+        const canvas = await html2canvas($('export-target'), { backgroundColor: '#ffffff', scale: 2, useCORS: true });
+        const link = document.createElement('a');
+        link.download = `salesinsight-${new Date().toISOString().slice(0, 10)}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch (error) {
+        notify('Помилка експорту PNG: ' + friendlyError(error), 'error');
+      }
+    }
+
+    function loadDemo() {
+      renderResults({
+        headers: ['Співробітник', 'Факт (шт)', 'Угоди', 'Конверсія'],
+        rows: [
+          ['Майборода Валентин', '78', '78', '67,9%'],
+          ['Василик Владислав', '82', '82', '42,7%'],
+          ['Демо-продавець 3', '65', '61', '38,4%']
+        ],
+        summary: [
+          'Демо-режим: дані нижче є прикладом і не відображають фактичні результати магазину.',
+          'Перед управлінськими рішеннями завантажте реальний скриншот та перевірте коректність розпізнаних значень.'
+        ]
+      });
+    }
+
+    function bindEvents() {
+      $('auth-form').addEventListener('submit', login);
+      $('register-btn').addEventListener('click', register);
+      $('logout-btn').addEventListener('click', logout);
+      $('config-open-btn').addEventListener('click', openConfig);
+      $('config-close-btn').addEventListener('click', closeConfig);
+      $('config-cancel-btn').addEventListener('click', closeConfig);
+      $('config-save-btn').addEventListener('click', saveConfig);
+      $('config-modal').addEventListener('click', event => {
+        if (event.target === $('config-modal')) closeConfig();
+      });
+      $('tab-new-btn').addEventListener('click', () => switchTab('new'));
+      $('tab-history-btn').addEventListener('click', () => switchTab('history'));
+      $('gemini-key').addEventListener('input', saveGeminiKey);
+      $('demo-btn').addEventListener('click', loadDemo);
+      $('save-btn').addEventListener('click', saveToDatabase);
+      $('download-btn').addEventListener('click', downloadPNG);
+      $('file-input').addEventListener('change', event => {
+        const file = event.target.files?.[0];
+        if (file) selectFile(file);
+        event.target.value = '';
+      });
+      $('drop-zone').addEventListener('click', () => $('file-input').click());
+      $('drop-zone').addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          $('file-input').click();
+        }
+      });
+      ['dragenter', 'dragover'].forEach(name => $('drop-zone').addEventListener(name, event => {
+        event.preventDefault(); $('drop-zone').classList.add('drag');
+      }));
+      ['dragleave', 'drop'].forEach(name => $('drop-zone').addEventListener(name, event => {
+        event.preventDefault(); $('drop-zone').classList.remove('drag');
+      }));
+      $('drop-zone').addEventListener('drop', event => {
+        const file = event.dataTransfer?.files?.[0];
+        if (file) selectFile(file);
+      });
+      window.addEventListener('paste', event => {
+        const items = event.clipboardData?.items;
+        if (!items) return;
+        for (const item of items) {
+          if (item.type && item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            if (file) {
+              event.preventDefault();
+              selectFile(file);
+              break;
+            }
+          }
+        }
+      });
+    }
+
+    async function init() {
+      bindEvents();
+      $('gemini-key').value = localStorage.getItem('sp_gemini') || '';
+      try {
+        initializeSupabase();
+        // Keep this callback lightweight; do not call Supabase methods inside it.
+        supabaseClient.auth.onAuthStateChange((_event, session) => {
+          updateAuthUI(session ? session.user : null);
+        });
+        await restoreSession();
+      } catch (error) {
+        setMessage('auth-msg', 'Помилка ініціалізації: ' + friendlyError(error), 'error');
+        notify('Перевірте налаштування Supabase.', 'error');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  })();
+  </script>
+</body>
+</html>
